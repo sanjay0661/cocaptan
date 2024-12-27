@@ -1,4 +1,4 @@
-name: SSH Connection Pipeline
+name: SSH Deploy Pipeline
 
 on:
   push:
@@ -8,34 +8,24 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
       # Check out the code from GitHub
       - name: Checkout Code
         uses: actions/checkout@v3
-
-      # Debugging: Check Environment Variables
-      - name: Echo Environment Variables
-        run: |
-          echo "HOST environment variable: $HOST"
-          echo "SSH_PRIVATE_KEY length: ${#SSH_PRIVATE_KEY}"
-        env:
-          HOST: ${{ secrets.HOST }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-
+      
       # Set up SSH key
       - name: Set up SSH
         run: |
-          echo "Setting up SSH key"
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
 
-      # SSH into remote server
-      - name: Test SSH Connection
+      # SSH into remote server and run commands
+      - name: SSH to Remote Server and Run Commands
         run: |
-          ssh -o StrictHostKeyChecking=no root@$HOST 'echo "SSH connection successful"'
+          ssh root@$HOST "cd /path/to/your/app && git pull && sudo systemctl restart your-service"
         env:
           HOST: ${{ secrets.HOST }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
