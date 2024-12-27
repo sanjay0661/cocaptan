@@ -1,4 +1,4 @@
-name: SSH Deploy Pipeline
+name: SSH Connection Pipeline
 
 on:
   push:
@@ -8,24 +8,41 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
-      # Check out the code from GitHub
+      # Checkout the code
       - name: Checkout Code
         uses: actions/checkout@v3
-      
-      # Set up SSH key
+
+      # Debug secrets and validate environment variables
+      - name: Debug Environment Variables
+        run: |
+          echo "HOST environment variable: '$HOST'"
+          echo "SSH_PRIVATE_KEY length: ${#SSH_PRIVATE_KEY}"
+          if [ -z "$HOST" ]; then
+            echo "ERROR: HOST variable is not set or empty!"
+            exit 1
+          fi
+        env:
+          HOST: ${{ secrets.HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      # Set up SSH key and known_hosts
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
+          echo "Setting up known_hosts for host: $HOST"
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+        env:
+          HOST: ${{ secrets.HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      # SSH into remote server and run commands
-      - name: SSH to Remote Server and Run Commands
+      # Test SSH Connection
+      - name: Test SSH Connection
         run: |
-          ssh root@$HOST "cd /path/to/your/app && git pull && sudo systemctl restart your-service"
+          ssh -o StrictHostKeyChecking=no root@$HOST 'echo "SSH connection successful"'
         env:
           HOST: ${{ secrets.HOST }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
