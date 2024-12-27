@@ -80,7 +80,7 @@ styles.css          | styles        |  96 bytes |
                     | Initial Total | 106.03 kB
 
 Application bundle generation complete. [1.504 seconds]
-Watch mode enabled. Watching for file changes...
+Watch mode enabled. Watching for file changes... 
   ➜  Local:   http://localhost:4200/
 ```
 
