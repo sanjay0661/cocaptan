@@ -1,0 +1,35 @@
+name: SSH Deployment Pipeline
+
+on:
+  push:
+    branches:
+      - master # Trigger on push to the master branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Checkout the code from the GitHub repository
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Set up SSH key
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
+
+      # SSH into the remote server and run deployment commands
+      - name: SSH to Remote Server and Deploy
+        run: |
+          ssh root@$HOST << EOF
+            cd /path/to/your/project
+            git pull origin master # Pull the latest code
+            sudo systemctl restart your-service # Restart your app/service
+          EOF
+        env:
+          HOST: ${{ secrets.HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
