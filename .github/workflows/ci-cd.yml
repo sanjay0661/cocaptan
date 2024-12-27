@@ -8,34 +8,33 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
-      # Checkout the code from GitHub
+      # Check out the code from GitHub
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Debugging step to check if HOST is set
-      - name: Debug HOST Variable
+      # Debugging: Check Environment Variables
+      - name: Echo Environment Variables
         run: |
           echo "HOST environment variable: $HOST"
-          echo "HOST secret: ${{ secrets.HOST }}"
+          echo "SSH_PRIVATE_KEY length: ${#SSH_PRIVATE_KEY}"
+        env:
+          HOST: ${{ secrets.HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
       # Set up SSH key
       - name: Set up SSH
         run: |
+          echo "Setting up SSH key"
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          # Debugging step to verify ssh-keyscan command
-          which ssh-keyscan
-          # Check if ssh-keyscan works and the key is valid
-          echo "Running ssh-keyscan on $HOST"
-          ssh-keyscan -H $HOST >> ~/.ssh/known_hosts || exit 1
+          ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
 
       # SSH into remote server
-      - name: SSH to Remote Server
+      - name: Test SSH Connection
         run: |
-          echo "Testing SSH connection to $HOST"
           ssh -o StrictHostKeyChecking=no root@$HOST 'echo "SSH connection successful"'
         env:
           HOST: ${{ secrets.HOST }}
