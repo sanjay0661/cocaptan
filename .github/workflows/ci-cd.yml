@@ -1,16 +1,16 @@
-name: SSH Deployment Pipeline
+name: SSH Connection Pipeline
 
 on:
   push:
     branches:
-      - master # Trigger on push to the master branch
+      - master
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     
     steps:
-      # Checkout the code from the GitHub repository
+      # Check out the code from GitHub
       - name: Checkout Code
         uses: actions/checkout@v3
 
@@ -22,14 +22,10 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
 
-      # SSH into the remote server and run deployment commands
-      - name: SSH to Remote Server and Deploy
+      # SSH into remote server
+      - name: SSH to Remote Server
         run: |
-          ssh root@$HOST << EOF
-            cd /path/to/your/project
-            git pull origin master # Pull the latest code
-            sudo systemctl restart your-service # Restart your app/service
-          EOF
+          ssh -o StrictHostKeyChecking=no root@$HOST 'echo "SSH connection successful"'
         env:
           HOST: ${{ secrets.HOST }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
