@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # Check out the code from GitHub
+      # Checkout the code from GitHub
       - name: Checkout Code
         uses: actions/checkout@v3
 
@@ -20,6 +20,9 @@ jobs:
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+          # Ensure the known_hosts directory is prepared
+          touch ~/.ssh/known_hosts
+          # Retrieve the remote host's SSH key
           ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
 
       # SSH into remote server
