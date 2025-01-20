@@ -2,14 +2,14 @@ pipeline {
     agent {
         docker {
             image 'docker:stable'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'  // Docker socket access
         }
     }
     environment {
         DOCKER_USERNAME = 'sanjayraj'
         DOCKER_PASSWORD = 'dckr_pat_N7EQOyJR1wE2vdbbZjYOfV0HAAc'
         IMAGE_NAME = 'sanjayraj/appv1'
-        DOCKER_CONFIG = '/var/jenkins_home/.docker'  // Override Docker config directory
+        DOCKER_CONFIG = '/tmp/.docker'  // Use a directory where Jenkins has write access
     }
     stages {
         stage('Checkout Code') {
