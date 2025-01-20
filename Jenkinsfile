@@ -2,18 +2,18 @@ pipeline {
     agent {
         docker {
             image 'docker:stable'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'  // Docker socket access
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
     environment {
-        DOCKER_USERNAME = 'sanjayraj'  // Hardcoded Docker Hub username
-        DOCKER_PASSWORD = 'dckr_pat_AfMsC8FmgLSc7vMC6xJKYYVGH88'  // Hardcoded Docker Hub password/token
-        IMAGE_NAME = 'sanjayraj/appv1'  // Replace with your Docker Hub image name
+        DOCKER_USERNAME = 'sanjayraj'
+        DOCKER_PASSWORD = 'dckr_pat_N7EQOyJR1wE2vdbbZjYOfV0HAAc'
+        IMAGE_NAME = 'sanjayraj/appv1'
+        DOCKER_CONFIG = '/var/jenkins_home/.docker'  // Override Docker config directory
     }
     stages {
         stage('Checkout Code') {
             steps {
-                // Checkout the code from the repository
                 checkout scm
             }
         }
@@ -21,7 +21,7 @@ pipeline {
             steps {
                 script {
                     echo 'Building Docker image...'
-                    sh 'docker build -t $IMAGE_NAME .'  // Build Docker image
+                    sh 'docker build -t $IMAGE_NAME .'
                 }
             }
         }
@@ -31,7 +31,7 @@ pipeline {
                     echo 'Logging into Docker Hub...'
                     sh '''
                         echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-                    '''  // Log in to Docker Hub using the credentials
+                    '''
                 }
             }
         }
@@ -39,7 +39,7 @@ pipeline {
             steps {
                 script {
                     echo 'Pushing Docker image to Docker Hub...'
-                    sh 'docker push $IMAGE_NAME'  // Push Docker image to Docker Hub
+                    sh 'docker push $IMAGE_NAME'
                 }
             }
         }
@@ -48,7 +48,7 @@ pipeline {
         always {
             script {
                 echo 'Logging out from Docker Hub...'
-                sh 'docker logout'  // Always log out from Docker Hub after completion
+                sh 'docker logout'
             }
         }
         success {
