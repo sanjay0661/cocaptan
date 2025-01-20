@@ -2,26 +2,26 @@ pipeline {
     agent {
         docker {
             image 'docker:stable'
-            args '-v /var/run/docker.sock:/var/run/docker.sock' // Access host Docker
+            args '-v /var/run/docker.sock:/var/run/docker.sock'  // Docker socket access
         }
     }
     environment {
-        DOCKER_USERNAME = credentials('DOCKER_HUB_CREDENTIALS_USR')
-        DOCKER_PASSWORD = credentials('DOCKER_HUB_CREDENTIALS_PSW')
-        IMAGE_NAME = 'sanjayraj/appv1' // Replace with your Docker Hub image repository
+        DOCKER_USERNAME = 'sanjayraj'  // Hardcoded Docker Hub username
+        DOCKER_PASSWORD = 'dckr_pat_N7EQOyJR1wE2vdbbZjYOfV0HAAc'  // Hardcoded Docker Hub password/token
+        IMAGE_NAME = 'sanjayraj/appv1'  // Replace with your Docker Hub image name
     }
     stages {
         stage('Checkout Code') {
             steps {
-                // Clones the GitHub repository containing Dockerfile
+                // Checkout the code from the repository
                 checkout scm
             }
         }
         stage('Build Docker Image') {
             steps {
                 script {
-                    echo 'Building the Docker image...'
-                    sh 'docker build -t $IMAGE_NAME .'
+                    echo 'Building Docker image...'
+                    sh 'docker build -t $IMAGE_NAME .'  // Build Docker image
                 }
             }
         }
@@ -30,8 +30,8 @@ pipeline {
                 script {
                     echo 'Logging into Docker Hub...'
                     sh '''
-                        echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-                    '''
+                        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+                    '''  // Log in to Docker Hub using the credentials
                 }
             }
         }
@@ -39,7 +39,7 @@ pipeline {
             steps {
                 script {
                     echo 'Pushing Docker image to Docker Hub...'
-                    sh 'docker push $IMAGE_NAME'
+                    sh 'docker push $IMAGE_NAME'  // Push Docker image to Docker Hub
                 }
             }
         }
@@ -48,7 +48,7 @@ pipeline {
         always {
             script {
                 echo 'Logging out from Docker Hub...'
-                sh 'docker logout'
+                sh 'docker logout'  // Always log out from Docker Hub after completion
             }
         }
         success {
