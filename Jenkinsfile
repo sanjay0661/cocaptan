@@ -7,7 +7,7 @@ pipeline {
     }
     environment {
         DOCKER_USERNAME = 'sanjayraj'  // Hardcoded Docker Hub username
-        DOCKER_PASSWORD = 'dckr_pat_N7EQOyJR1wE2vdbbZjYOfV0HAAc'  // Hardcoded Docker Hub password/token
+        DOCKER_PASSWORD = 'dckr_pat_AfMsC8FmgLSc7vMC6xJKYYVGH88'  // Hardcoded Docker Hub password/token
         IMAGE_NAME = 'sanjayraj/appv1'  // Replace with your Docker Hub image name
     }
     stages {
