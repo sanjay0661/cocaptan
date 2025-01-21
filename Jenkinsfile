@@ -2,14 +2,12 @@ pipeline {
     agent {
         docker {
             image 'docker:stable'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'  // Docker socket access
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
     environment {
-        DOCKER_USERNAME = 'sanjayraj'
-        DOCKER_PASSWORD = 'dckr_pat_N7EQOyJR1wE2vdbbZjYOfV0HAAc'
-        IMAGE_NAME = 'sanjayraj/appv1'
-        DOCKER_CONFIG = '/tmp/.docker'  // Use a directory where Jenkins has write access
+        IMAGE_NAME = 'sanjayraj/appv1'  // Your Docker image name
+        DOCKER_CONFIG = '/tmp/.docker'  // Temporary location for Docker config
     }
     stages {
         stage('Checkout Code') {
@@ -27,11 +25,13 @@ pipeline {
         }
         stage('Login to Docker Hub') {
             steps {
-                script {
-                    echo 'Logging into Docker Hub...'
-                    sh '''
-                        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-                    '''
+                withCredentials([usernamePassword(credentialsId: 'docker_hub_creds', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                    script {
+                        echo 'Logging into Docker Hub...'
+                        sh '''
+                            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+                        '''
+                    }
                 }
             }
         }
