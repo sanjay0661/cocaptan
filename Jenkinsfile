@@ -6,8 +6,8 @@ pipeline {
         }
     }
     environment {
-        IMAGE_NAME = 'sanjayraj/appv1'  // Your Docker image name
-        DOCKER_CONFIG = '/tmp/.docker'  // Temporary location for Docker config
+        IMAGE_NAME = 'sanjayraj/appv1'  
+        DOCKER_CONFIG = '/tmp/.docker' 
     }
     stages {
         stage('Checkout Code') {
