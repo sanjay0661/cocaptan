@@ -48,9 +48,9 @@ pipeline {
             steps {
                 script {
                     echo 'Setting up kubectl and deploying to Minikube...'
-                    // Ensure kubectl is properly configured with Minikube context
+                    // Install sudo in the docker agent
                     sh '''
-                        echo "Setting Minikube context..."
+                        apk add --no-cache sudo  # Install sudo (for Alpine-based Docker image)
                         sudo minikube update-context
                         sudo minikube start
                         sudo kubectl config use-context minikube
