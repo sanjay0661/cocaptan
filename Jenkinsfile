@@ -1,57 +1,32 @@
 pipeline {
-    agent {
-        docker {
-            image 'docker:stable'
-            args '--privileged -v /var/run/docker.sock:/var/run/docker.sock'
-        }
-    }
+    agent any
     environment {
-        IMAGE_NAME = 'sanjayraj/appv1'  
-        DOCKER_CONFIG = '/tmp/.docker' 
+        DOCKER_IMAGE = 'sanjayraj/appv1'
     }
     stages {
-        stage('Checkout Code') {
-            steps {
-                checkout scm
-            }
-        }
         stage('Build Docker Image') {
             steps {
                 script {
                     echo 'Building Docker image...'
-                    sh 'docker build -t $IMAGE_NAME .'
+                    sh 'docker build -t $DOCKER_IMAGE .'
                 }
             }
         }
-        stage('Login to Docker Hub') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'docker_hub_creds', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                    script {
-                        echo 'Logging into Docker Hub...'
-                        sh '''
-                            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-                        '''
-                    }
-                }
-            }
-        }
-        stage('Push Docker Image') {
+        stage('Push Image to Docker Hub') {
             steps {
                 script {
                     echo 'Pushing Docker image to Docker Hub...'
-                    sh 'docker push $IMAGE_NAME'
+                    sh 'docker push $DOCKER_IMAGE'
                 }
             }
         }
         stage('Deploy to Minikube') {
             steps {
                 script {
-                    echo 'Installing kubectl in the Jenkins Docker container...'
-                    sh 'apk add --no-cache curl && curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.24.0/bin/linux/amd64/kubectl && chmod +x kubectl && mv kubectl /usr/local/bin/'
                     echo 'Deploying to Minikube...'
                     sh '''
                         kubectl apply -f deployment.yml
-                        kubectl rollout status deployment/app-deployment
+                        kubectl rollout status deployment/my-app-deployment
                     '''
                 }
             }
@@ -65,10 +40,10 @@ pipeline {
             }
         }
         success {
-            echo 'Pipeline executed successfully! Image pushed to Docker Hub and deployed to Minikube.'
+            echo 'Deployed successfully to Minikube.'
         }
         failure {
-            echo 'Pipeline failed!'
+            echo 'Deployment failed.'
         }
     }
 }
