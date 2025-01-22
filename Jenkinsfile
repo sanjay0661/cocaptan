@@ -51,7 +51,7 @@ pipeline {
                         docker pull $IMAGE_NAME
                         docker stop app || true
                         docker rm app || true
-                        docker run -d --name app -p 8080:80 $IMAGE_NAME
+                        docker run -d --name app -p 9000:9000 $IMAGE_NAME
                     '''
                 }
             }
