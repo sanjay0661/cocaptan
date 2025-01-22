@@ -6,8 +6,8 @@ pipeline {
         }
     }
     environment {
-        IMAGE_NAME = 'sanjayraj/appv1'  // Change as needed
-        DOCKER_CONFIG = '/tmp/.docker' // Docker config directory
+        IMAGE_NAME = 'sanjayraj/appv1'  
+        DOCKER_CONFIG = '/tmp/.docker' 
     }
     stages {
         stage('Checkout Code') {
@@ -43,19 +43,6 @@ pipeline {
                 }
             }
         }
-        stage('Deploy Locally') {
-            steps {
-                script {
-                    echo 'Deploying Docker container locally...'
-                    sh '''
-                        docker pull $IMAGE_NAME
-                        docker stop app || true
-                        docker rm app || true
-                        docker run -d --name app -p 9000:9000 $IMAGE_NAME
-                    '''
-                }
-            }
-        }
     }
     post {
         always {
@@ -65,7 +52,7 @@ pipeline {
             }
         }
         success {
-            echo 'Pipeline executed successfully! Image pushed to Docker Hub and deployed locally.'
+            echo 'Pipeline executed successfully! Image pushed to Docker Hub.'
         }
         failure {
             echo 'Pipeline failed!'
