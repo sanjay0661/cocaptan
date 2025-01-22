@@ -6,8 +6,8 @@ pipeline {
         }
     }
     environment {
-        IMAGE_NAME = 'sanjayraj/appv1'  // Change as needed
-        DOCKER_CONFIG = '/tmp/.docker' // Docker config directory
+        IMAGE_NAME = 'sanjayraj/appv1'  
+        DOCKER_CONFIG = '/tmp/.docker' 
     }
     stages {
         stage('Checkout Code') {
@@ -43,15 +43,13 @@ pipeline {
                 }
             }
         }
-        stage('Deploy Locally') {
+        stage('Deploy to Minikube') {
             steps {
                 script {
-                    echo 'Deploying Docker container locally...'
+                    echo 'Deploying to Minikube...'
                     sh '''
-                        docker pull $IMAGE_NAME
-                        docker stop app || true
-                        docker rm app || true
-                        docker run -d --name app -p 9000:9000 $IMAGE_NAME
+                        kubectl apply -f deployment.yml
+                        kubectl rollout status deployment/app-deployment
                     '''
                 }
             }
@@ -60,12 +58,12 @@ pipeline {
     post {
         always {
             script {
-                echo 'Logging out from Docker Hub...'
+                echo 'Cleaning up temporary data...'
                 sh 'docker logout'
             }
         }
         success {
-            echo 'Pipeline executed successfully! Image pushed to Docker Hub and deployed locally.'
+            echo 'Pipeline executed successfully! Image pushed to Docker Hub and deployed to Minikube.'
         }
         failure {
             echo 'Pipeline failed!'
