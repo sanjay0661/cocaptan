@@ -46,6 +46,8 @@ pipeline {
         stage('Deploy to Minikube') {
             steps {
                 script {
+                    echo 'Installing kubectl in the Jenkins Docker container...'
+                    sh 'apk add --no-cache curl && curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.24.0/bin/linux/amd64/kubectl && chmod +x kubectl && mv kubectl /usr/local/bin/'
                     echo 'Deploying to Minikube...'
                     sh '''
                         kubectl apply -f deployment.yml
