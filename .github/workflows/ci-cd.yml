@@ -50,7 +50,7 @@ jobs:
             docker pull $IMAGE_NAME:latest &&
             docker stop cocaptan || true &&
             docker rm cocaptan || true &&
-            docker run -d --name cocaptan -p 4200:80 $IMAGE_NAME:latest
+            docker run -d --name cocaptan -p 4200:4200 $IMAGE_NAME:${{ github.ref_name }} --host 0.0.0.0
           "
         env:
           HOST: ${{ secrets.HOST }}
