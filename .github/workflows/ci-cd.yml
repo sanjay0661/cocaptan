@@ -1,4 +1,4 @@
-name: CI/CD Pipeline for Docker Deployment 
+name: CI/CD Pipeline for Docker Deployment
 
 on:
   push:
@@ -30,12 +30,14 @@ jobs:
         run: |
           latest_tag=$(git tag --sort=-v:refname | head -n 1)
           if [[ "$latest_tag" =~ ^v([0-9]+)$ ]]; then
-            next_version=$((BASH_REMATCH[1] + 1))
+            version_number=${BASH_REMATCH[1]}
+            next_version=$((version_number + 1))
           else
             next_version=1
           fi
           new_tag="v$next_version"
           echo "TAG_NAME=$new_tag" >> $GITHUB_ENV
+        shell: bash
 
       # Step 4: Build Docker Image
       - name: Build Docker Image
@@ -45,12 +47,18 @@ jobs:
       - name: Push Docker Image to Docker Hub
         run: docker push $IMAGE_NAME:$TAG_NAME
 
-      # Step 6: Push New Git Tag
+      # Step 6: Push New Git Tag (only if it doesn't exist already)
       - name: Push New Git Tag
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git tag $TAG_NAME
-          git push origin $TAG_NAME
+          git fetch --tags
+          # Check if the tag exists
+          if git rev-parse $TAG_NAME >/dev/null 2>&1; then
+            echo "Tag $TAG_NAME already exists, skipping push."
+          else
+            git tag $TAG_NAME
+            git push origin $TAG_NAME
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
