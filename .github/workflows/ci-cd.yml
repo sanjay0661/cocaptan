@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - master
-    tags: # Trigger on tags
-      - 'v*'
 
 env:
   IMAGE_NAME: sanjayraj/cocaptan  # Replace with your Docker Hub repository
@@ -19,17 +17,18 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Step 2: Extract Version Tag or Generate Tag
-      - name: Set Docker Image Tag
-        id: versioning
+      # Step 2: Retrieve the Current Version
+      - name: Get Current Version
+        id: version
         run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-          elif [[ "${GITHUB_REF}" == refs/heads/* ]]; then
-            echo "TAG=${GITHUB_REF#refs/heads/}-$(date +%Y%m%d%H%M%S)" >> $GITHUB_ENV
+          if git describe --tags --abbrev=0 2>/dev/null; then
+            CURRENT_TAG=$(git describe --tags --abbrev=0)
+            NEW_VERSION=$(( ${CURRENT_TAG#v} + 1 ))
+            echo "TAG=v$NEW_VERSION" >> $GITHUB_ENV
           else
-            echo "TAG=latest" >> $GITHUB_ENV
+            echo "TAG=v1" >> $GITHUB_ENV
           fi
+        shell: bash
 
       # Step 3: Log in to Docker Hub
       - name: Log in to Docker Hub
@@ -46,7 +45,15 @@ jobs:
       - name: Push Docker Image to Docker Hub
         run: docker push $IMAGE_NAME:${{ env.TAG }}
 
-      # Step 6: Set up SSH to Deploy to Remote Server
+      # Step 6: Tag and Push Git Version
+      - name: Create and Push Git Tag
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag ${{ env.TAG }}
+          git push origin ${{ env.TAG }}
+
+      # Step 7: Set up SSH to Deploy to Remote Server
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
@@ -57,7 +64,7 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           HOST: ${{ secrets.HOST }}
 
-      # Step 7: Deploy to Remote Server
+      # Step 8: Deploy to Remote Server
       - name: Deploy Application to Droplet
         run: |
           ssh root@$HOST "
