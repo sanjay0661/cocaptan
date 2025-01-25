@@ -1,4 +1,4 @@
-name: CI/CD Pipeline for Docker Deployment 
+name: CI/CD Pipeline for Docker Deployment
 
 on:
   push:
@@ -28,23 +28,16 @@ jobs:
       - name: Determine Next Version Tag
         id: version
         run: |
-          # Get the latest tag from Git
           latest_tag=$(git tag --sort=-v:refname | head -n 1)
-          echo "Latest tag: $latest_tag"
-
-          # Extract the numeric part and increment
           if [[ "$latest_tag" =~ ^v([0-9]+)$ ]]; then
             next_version=$((BASH_REMATCH[1] + 1))
           else
             next_version=1
           fi
-
-          # Construct the new tag
           new_tag="v$next_version"
-          echo "New tag: $new_tag"
           echo "TAG_NAME=$new_tag" >> $GITHUB_ENV
 
-      # Step 4: Build Docker Image with New Tag
+      # Step 4: Build Docker Image
       - name: Build Docker Image
         run: docker build -t $IMAGE_NAME:$TAG_NAME .
 
@@ -52,7 +45,7 @@ jobs:
       - name: Push Docker Image to Docker Hub
         run: docker push $IMAGE_NAME:$TAG_NAME
 
-      # Step 6: Push the New Tag to GitHub
+      # Step 6: Push New Git Tag
       - name: Push New Git Tag
         run: |
           git config user.name "GitHub Actions"
@@ -61,26 +54,3 @@ jobs:
           git push origin $TAG_NAME
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Step 7: Set up SSH to Deploy to Remote Server
-      - name: Set up SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          HOST: ${{ secrets.HOST }}
-
-      # Step 8: Deploy Application to Remote Server
-      - name: Deploy Application to Droplet
-        run: |
-          ssh root@$HOST "
-            docker pull $IMAGE_NAME:$TAG_NAME &&
-            docker stop cocaptan || true &&
-            docker rm cocaptan || true &&
-            docker run -d --name cocaptan -p 4200:4200 $IMAGE_NAME:$TAG_NAME --host 0.0.0.0
-          "
-        env:
-          HOST: ${{ secrets.HOST }}
