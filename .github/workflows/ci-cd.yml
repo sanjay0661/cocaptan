@@ -3,7 +3,7 @@ name: Automatic Version Tagging
 on:
   push:
     branches:
-      - main  # Run the workflow when there is a push on the main branch
+      - master  # Run the workflow when there is a push on the main branch
 
 jobs:
   version_tagging:
