@@ -6,7 +6,7 @@ on:
       - master
 
 env:
-  IMAGE_NAME: sanjayraj/cocaptan  # Replace with your Docker Hub repository 
+  IMAGE_NAME: sanjayraj/cocaptan  # Replace with your Docker Hub repository
 
 jobs:
   build-and-deploy:
