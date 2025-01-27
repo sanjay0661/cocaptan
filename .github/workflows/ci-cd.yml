@@ -25,16 +25,15 @@ jobs:
         id: set_version_tag
         run: |
           # Get the last tag (assumes it's in the format v1, v2, v3, etc.)
-          LAST_TAG=$(git describe --tags --abbrev=0)
+          LAST_TAG=$(git describe --tags --abbrev=0 || echo "v0")  # Default to "v0" if no tag exists
           echo "The latest Git tag is: $LAST_TAG"
 
-          if [[ ! -z $LAST_TAG && $LAST_TAG =~ ^v([0-9]+)$ ]]; then
-            # Extract the version number and increment
+          # Extract the version number, increment it
+          if [[ $LAST_TAG =~ ^v([0-9]+)$ ]]; then
             TAG_NUMBER=$(echo $LAST_TAG | sed 's/v//')
             VERSION_TAG="v$((TAG_NUMBER + 1))"
           else
-            # If no tags, start from v1
-            VERSION_TAG="v1"
+            VERSION_TAG="v1"  # Start with v1 if format doesn't match
           fi
 
           echo "The tag being used is: $VERSION_TAG"
