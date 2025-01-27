@@ -3,7 +3,7 @@ name: CI/CD Pipeline with Auto Version Tagging
 on:
   push:
     branches:
-      - master  # You can change to a different branch if necessary
+      - master  # Trigger on commits pushed to the master branch
 
 env:
   IMAGE_NAME: sanjayraj/cocaptan  # Docker Hub repository
@@ -21,30 +21,30 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Step 2: Fetch all remote tags
+      # Step 2: Fetch all tags from remote repository
       - name: Fetch all tags from remote
         run: git fetch --tags
 
-      # Step 3: Get the latest version tag
+      # Step 3: Get the latest version tag and increment it
       - name: Get the latest Git tag and increment it
         id: set_version_tag
         run: |
-          # Fetch tags starting with "v" and exclude any other tags
+          # Fetch tags starting with "v" and ensure they are proper version numbers
           TAGS=$(git tag -l "v[0-9]*")
 
-          echo "Fetched tags: $TAGS"
+          echo "Fetched version tags: $TAGS"
           
-          # If no version tags, start with v1
+          # If no version tags exist, start with v1
           if [ -z "$TAGS" ]; then
             VERSION_TAG="v1"
           else
-            # Sort tags, take the latest one, and increment it
+            # Sort valid tags and increment the highest one
             VERSION_TAG=$(echo "$TAGS" | sort -V | tail -n 1)
             VERSION_NUMBER=$(echo $VERSION_TAG | sed 's/^v//')
             VERSION_TAG="v$((VERSION_NUMBER + 1))"
           fi
 
-          # Output the new tag
+          # Output the new version tag
           echo "The tag being used is: $VERSION_TAG"
           echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_ENV
 
@@ -55,7 +55,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Step 5: Build the Docker Image
+      # Step 5: Build Docker Image
       - name: Build Docker Image
         run: |
           docker build -t $IMAGE_NAME:$VERSION_TAG .
@@ -64,7 +64,7 @@ jobs:
       - name: Push Docker Image to Docker Hub
         run: docker push $IMAGE_NAME:$VERSION_TAG
 
-      # Step 7: Deploy the image to remote server via SSH
+      # Step 7: SSH and deploy to remote server
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
