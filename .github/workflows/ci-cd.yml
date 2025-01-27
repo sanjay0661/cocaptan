@@ -1,9 +1,9 @@
-name: Automatic Version Tagging 
+name: Automatic Version Tagging
 
 on:
   push:
     branches:
-      - master  # Run the workflow when there is a push on the main branch
+      - main  # Run the workflow when there is a push on the main branch
 
 jobs:
   version_tagging:
@@ -31,15 +31,25 @@ jobs:
         minor=${PARTS[1]}
         patch=${PARTS[2]}
 
-        # Increment the version (e.g., minor version for this example)
+        # Increment the minor version (change logic here for major/patch if needed)
         new_version="v$major.$((minor+1)).0"
         echo "New version: $new_version"
         echo "::set-output name=new_tag::$new_version"
 
-    - name: Push new tag
+    - name: Check if tag exists
+      id: check_tag
       run: |
-        new_tag=${{ steps.increment_tag.outputs.new_tag }}
-        git tag "$new_tag"
-        git push origin "$new_tag"
+        git fetch --tags
+        if git rev-parse "${{ steps.increment_tag.outputs.new_tag }}" >/dev/null 2>&1; then
+          echo "exists=true" >> $GITHUB_ENV
+        else
+          echo "exists=false" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Push new tag
+      if: env.exists == 'false'
+      run: |
+        git tag "${{ steps.increment_tag.outputs.new_tag }}"
+        git push origin "${{ steps.increment_tag.outputs.new_tag }}"
       env:
-        TOKEN: ${{ secrets.GH_TOKEN }}  # Use your custom secret here
+        TOKEN: ${{ secrets.GH_TOKEN }}  # Use your personal access token or secret here
