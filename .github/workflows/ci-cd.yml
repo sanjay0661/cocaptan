@@ -6,12 +6,12 @@ on:
       - master
 
 env:
-  IMAGE_NAME: sanjayraj/cocaptan  # Replace with your Docker Hub repositor
+  IMAGE_NAME: sanjayraj/cocaptan  # Replace with your Docker Hub repository
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       # Step 1: Check out the repository
       - name: Checkout Repository
@@ -36,13 +36,18 @@ jobs:
           echo "TAG=$NEW_TAG" >> $GITHUB_ENV
         shell: bash
 
-      # Step 3: Create and Push Git Tag
-      - name: Create and Push Git Tag
+      # Step 3: Check if the Git tag already exists, skip if it does
+      - name: Skip Create and Push Git Tag if Exists
         run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git tag ${{ env.TAG }}
-          git push origin ${{ env.TAG }}
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag ${{ env.TAG }} already exists. Skipping tag creation."
+          else
+            echo "Creating new tag: ${{ env.TAG }}"
+            git config user.name "GitHub Actions"
+            git config user.email "actions@github.com"
+            git tag ${{ env.TAG }}
+            git push origin ${{ env.TAG }}
+          fi
 
       # Step 4: Log in to Docker Hub
       - name: Log in to Docker Hub
