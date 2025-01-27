@@ -11,68 +11,52 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Check out the repository
+      # Step 1: Checkout the repository
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Step 2: Retrieve the Current Version and Generate Tag
-      - name: Get Current Version and Generate Tag
-        id: version
+      # Step 2: Fetch all tags from the remote repository
+      - name: Fetch all tags from remote
+        run: git fetch --tags
+
+      # Step 3: Set dynamic Docker version tag
+      - name: Get the latest Git tag and increment it
+        id: set_version_tag
         run: |
-          # Fetch all tags from the remote
-          git fetch --tags
-          
-          # Get the most recent tag (e.g., v1, v2, v3, ...)
-          CURRENT_TAG=$(git tag -l "v*" | sort -V | tail -n 1)
-          
-          # Increment the last tag number if it exists
-          if [ -z "$CURRENT_TAG" ]; then
-            NEW_TAG="v1"  # Start with v1 if no tags are present
+          # Get the last tag (assumes it's in the format v1, v2, v3, etc.)
+          LAST_TAG=$(git describe --tags --abbrev=0)
+          echo "The latest Git tag is: $LAST_TAG"
+
+          if [[ ! -z $LAST_TAG && $LAST_TAG =~ ^v([0-9]+)$ ]]; then
+            # Extract the version number and increment
+            TAG_NUMBER=$(echo $LAST_TAG | sed 's/v//')
+            VERSION_TAG="v$((TAG_NUMBER + 1))"
           else
-            LAST_VERSION=$(echo "$CURRENT_TAG" | sed 's/v//')
-            NEW_VERSION=$(( LAST_VERSION + 1 ))
-            NEW_TAG="v$NEW_VERSION"
+            # If no tags, start from v1
+            VERSION_TAG="v1"
           fi
 
-          echo "TAG=$NEW_TAG" >> $GITHUB_ENV
-        shell: bash
+          echo "The tag being used is: $VERSION_TAG"
+          echo "TAG=$VERSION_TAG" >> $GITHUB_ENV
 
-      # Step 3: Log Tag Value to Debug
-      - name: Show Tag
-        run: |
-          echo "The tag being used is: ${{ env.TAG }}"
-
-      # Step 4: Check if the Git tag already exists, skip if it does
-      - name: Skip Create and Push Git Tag if Exists
-        run: |
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag ${{ env.TAG }} already exists. Skipping tag creation."
-          else
-            echo "Creating new tag: ${{ env.TAG }}"
-            git config user.name "GitHub Actions"
-            git config user.email "actions@github.com"
-            git tag ${{ env.TAG }}
-            git push origin ${{ env.TAG }}
-          fi
-
-      # Step 5: Log in to Docker Hub
+      # Step 4: Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Step 6: Build Docker Image
+      # Step 5: Build Docker Image with dynamic version tag
       - name: Build Docker Image
-        run: docker build -t $IMAGE_NAME:${{ env.TAG }} .
-
-      # Step 7: Push Docker Image to Docker Hub
+        run: |
+          docker build -t $IMAGE_NAME:$TAG .
+        
+      # Step 6: Push Docker Image to Docker Hub
       - name: Push Docker Image to Docker Hub
-        run: docker push $IMAGE_NAME:${{ env.TAG }}
+        run: docker push $IMAGE_NAME:$TAG
 
-      # Step 8: Set up SSH to Deploy to Remote Server
+      # Step 7: Set up SSH to Deploy to Remote Server
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
@@ -83,14 +67,14 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           HOST: ${{ secrets.HOST }}
 
-      # Step 9: Deploy to Remote Server
+      # Step 8: Deploy to Remote Server (with dynamic tag)
       - name: Deploy Application to Droplet
         run: |
           ssh root@$HOST "
-            docker pull $IMAGE_NAME:${{ env.TAG }} &&
+            docker pull $IMAGE_NAME:$TAG &&
             docker stop cocaptan || true &&
             docker rm cocaptan || true &&
-            docker run -d --name cocaptan -p 4200:4200 $IMAGE_NAME:${{ env.TAG }} --host 0.0.0.0
+            docker run -d --name cocaptan -p 9000:9000 $IMAGE_NAME:$TAG
           "
         env:
           HOST: ${{ secrets.HOST }}
