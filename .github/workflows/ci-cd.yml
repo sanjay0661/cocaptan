@@ -21,27 +21,36 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Step 2: Fetch all tags from remote repository
+      # Step 2: Fetch all tags from remote
       - name: Fetch all tags from remote
         run: git fetch --tags
 
-      # Step 3: Get the latest version tag and increment it
+      # Step 3: Get the latest Git tag and increment it
       - name: Get the latest Git tag and increment it
         id: set_version_tag
         run: |
           # Fetch tags starting with "v" and ensure they are proper version numbers
           TAGS=$(git tag -l "v[0-9]*")
 
+          # Debug output to check tags found
           echo "Fetched version tags: $TAGS"
           
-          # If no version tags exist, start with v1
+          # If no valid version tags exist, start with v1
           if [ -z "$TAGS" ]; then
             VERSION_TAG="v1"
           else
-            # Sort valid tags and increment the highest one
-            VERSION_TAG=$(echo "$TAGS" | sort -V | tail -n 1)
-            VERSION_NUMBER=$(echo $VERSION_TAG | sed 's/^v//')
-            VERSION_TAG="v$((VERSION_NUMBER + 1))"
+            # Filter only valid versions that are like v1, v2, v3...
+            VALID_TAGS=$(echo "$TAGS" | grep -E '^v[0-9]+$')
+            
+            # If no valid tags are found, initialize with v1
+            if [ -z "$VALID_TAGS" ]; then
+              VERSION_TAG="v1"
+            else
+              # Sort valid tags numerically and select the highest one
+              VERSION_TAG=$(echo "$VALID_TAGS" | sort -V | tail -n 1)
+              VERSION_NUMBER=$(echo $VERSION_TAG | sed 's/^v//')
+              VERSION_TAG="v$((VERSION_NUMBER + 1))"
+            fi
           fi
 
           # Output the new version tag
