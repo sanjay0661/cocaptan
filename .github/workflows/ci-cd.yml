@@ -8,41 +8,50 @@ on:
 jobs:
   tag-version:
     runs-on: ubuntu-latest
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Set up Node.js (optional, if you need node/npm)
-      uses: actions/setup-node@v3
-      with:
-        node-version: '14'
+      - name: Set up Node.js (optional, if you need node/npm)
+        uses: actions/setup-node@v3
+        with:
+          node-version: '14'
 
-    - name: Get the latest tag or create an initial tag
-      run: |
-        TAGS=$(git tag -l)
-        if [ -z "$TAGS" ]; then
-          NEW_TAG="v0.0.1"
-        else
-          # Sort tags numerically to get the latest tag
-          LATEST_TAG=$(echo "$TAGS" | sort -V | tail -n 1)
-          # Increment the PATCH version
-          VERSION_ARRAY=(${LATEST_TAG//./ })
-          PATCH=${VERSION_ARRAY[2]}
-          NEW_PATCH=$((PATCH + 1))
-          NEW_TAG="${VERSION_ARRAY[0]}.${VERSION_ARRAY[1]}.$NEW_PATCH"
-        fi
-        echo "New version is: $NEW_TAG"
-        echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+      - name: Install dependencies and build React app
+        run: |
+          echo "Installing dependencies..."
+          npm install --legacy-peer-deps
 
-    - name: Check if tag exists and create new tag
-      run: |
-        # Ensure the new tag is a valid format and check if it exists on remote
-        TAG_EXISTS=$(git ls-remote --tags origin | grep "refs/tags/$NEW_TAG")
-        
-        if [ -z "$TAG_EXISTS" ]; then
-          echo "Tag $NEW_TAG does not exist, creating it."
-          git tag $NEW_TAG
-          git push origin $NEW_TAG
-        else
-          echo "Tag $NEW_TAG already exists, skipping tag creation."
-        fi
+          echo "Building the React app..."
+          CI=false npm run build  # Build the React app
+
+      - name: Tagging setup
+        run: |
+          # Determine the latest tag or initialize as v0.0.0 if no tags found
+          LATEST_TAG=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "v0.0.0")
+
+          # Remove the 'v' from the version string
+          VERSION_BITS=(${LATEST_TAG//v/})
+          IFS='.' read -r V_MAJOR V_MINOR V_PATCH <<< "$VERSION_BITS"
+          V_MAJOR=${V_MAJOR:-0}  # Default to 0 if not present
+          V_MINOR=${V_MINOR:-0}  # Default to 0 if not present
+          V_PATCH=${V_PATCH:-0}  # Default to 0 if not present
+
+          # Increment the patch version until a non-existing tag is found
+          while git rev-parse "v$V_MAJOR.$V_MINOR.$V_PATCH" >/dev/null 2>&1; do
+              V_PATCH=$((V_PATCH + 1))  # Increment patch version
+          done
+
+          NEW_TAG="v$V_MAJOR.$V_MINOR.$V_PATCH"
+          echo "New Tag: $NEW_TAG"
+
+          # Check if the tag already exists on the remote
+          if git ls-remote --tags origin | grep -q "refs/tags/$NEW_TAG"; then
+              echo "Tag $NEW_TAG already exists in the remote, skipping tag creation."
+          else
+              # Create the new tag and push it
+              echo "Creating and pushing tag $NEW_TAG"
+              git tag $NEW_TAG
+              git push origin $NEW_TAG
+              echo "Tag $NEW_TAG pushed."
