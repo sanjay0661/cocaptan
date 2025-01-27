@@ -29,8 +29,8 @@ jobs:
       - name: Get the latest Git tag and increment it
         id: set_version_tag
         run: |
-          # Fetch tags starting with "v" and ensure they are proper version numbers
-          TAGS=$(git tag -l "v[0-9]*")
+          # Fetch tags starting with "v" and ensure they are proper version numbers (v1, v2, etc.)
+          TAGS=$(git tag -l "v[0-9]*" | grep -E '^v[0-9]+$')
 
           # Debug output to check tags found
           echo "Fetched version tags: $TAGS"
@@ -39,18 +39,10 @@ jobs:
           if [ -z "$TAGS" ]; then
             VERSION_TAG="v1"
           else
-            # Filter only valid versions that are like v1, v2, v3...
-            VALID_TAGS=$(echo "$TAGS" | grep -E '^v[0-9]+$')
-            
-            # If no valid tags are found, initialize with v1
-            if [ -z "$VALID_TAGS" ]; then
-              VERSION_TAG="v1"
-            else
-              # Sort valid tags numerically and select the highest one
-              VERSION_TAG=$(echo "$VALID_TAGS" | sort -V | tail -n 1)
-              VERSION_NUMBER=$(echo $VERSION_TAG | sed 's/^v//')
-              VERSION_TAG="v$((VERSION_NUMBER + 1))"
-            fi
+            # Sort valid tags numerically and select the highest one
+            VERSION_TAG=$(echo "$TAGS" | sort -V | tail -n 1)
+            VERSION_NUMBER=$(echo $VERSION_TAG | sed 's/^v//')
+            VERSION_TAG="v$((VERSION_NUMBER + 1))"
           fi
 
           # Output the new version tag
