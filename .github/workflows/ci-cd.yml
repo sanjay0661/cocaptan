@@ -1,4 +1,4 @@
-name: Automatic Version Tagging
+name: Automatic Version Tagging 
 
 on:
   push:
