@@ -1,88 +1,39 @@
-name: CI/CD Pipeline with Auto Version Tagging
+name: Automatic Version Tagging
 
 on:
   push:
     branches:
-      - master  # Trigger on commits pushed to the master branch
-
-env:
-  IMAGE_NAME: sanjayraj/cocaptan  # Docker Hub repository
-  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-  SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-  HOST: ${{ secrets.HOST }}
+      - main  # Set the branch where versioning should occur
 
 jobs:
-  build-and-deploy:
+  tag-version:
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Checkout the repository
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      # Step 2: Fetch all tags from remote
-      - name: Fetch all tags from remote
-        run: git fetch --tags
+    - name: Set up Node.js (optional, if you need node/npm)
+      uses: actions/setup-node@v3
+      with:
+        node-version: '14'
 
-      # Step 3: Get the latest Git tag and increment it
-      - name: Get the latest Git tag and increment it
-        id: set_version_tag
-        run: |
-          # Fetch only tags that follow the versioning pattern, e.g., v1, v2, etc.
-          TAGS=$(git tag -l "v*" | grep -E '^v[0-9]+$')
+    - name: Get the latest tag
+      run: |
+        TAG=$(git describe --tags --abbrev=0)
+        echo "Latest tag is: $TAG"
+        echo "TAG=$TAG" >> $GITHUB_ENV
 
-          # Debug output to check tags found
-          echo "Fetched version tags: $TAGS"
-          
-          # If no valid version tags exist, start with v1
-          if [ -z "$TAGS" ]; then
-            VERSION_TAG="v1"
-          else
-            # Sort the valid tags and pick the highest one
-            VERSION_TAG=$(echo "$TAGS" | sort -V | tail -n 1)
-            VERSION_NUMBER=$(echo $VERSION_TAG | sed 's/^v//')
-            VERSION_TAG="v$((VERSION_NUMBER + 1))"
-          fi
+    - name: Increment version number
+      run: |
+        VERSION=$(echo $TAG | sed 's/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\)/\1.\2.\3/')
+        VERSION_ARRAY=(${VERSION//./ })
+        PATCH=${VERSION_ARRAY[2]}
+        NEW_PATCH=$((PATCH + 1))
+        NEW_VERSION="${VERSION_ARRAY[0]}.${VERSION_ARRAY[1]}.$NEW_PATCH"
+        echo "New version is: $NEW_VERSION"
+        echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
 
-          # Output the new version tag
-          echo "The tag being used is: $VERSION_TAG"
-          echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_ENV
-
-      # Step 4: Log in to Docker Hub
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      # Step 5: Build Docker Image
-      - name: Build Docker Image
-        run: |
-          docker build -t $IMAGE_NAME:$VERSION_TAG .
-
-      # Step 6: Push Docker Image to Docker Hub
-      - name: Push Docker Image to Docker Hub
-        run: docker push $IMAGE_NAME:$VERSION_TAG
-
-      # Step 7: SSH and deploy to remote server
-      - name: Set up SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          HOST: ${{ secrets.HOST }}
-
-      - name: Deploy Application to Droplet
-        run: |
-          ssh root@$HOST "
-            docker pull $IMAGE_NAME:$VERSION_TAG &&
-            docker stop cocaptan || true &&
-            docker rm cocaptan || true &&
-            docker run -d --name cocaptan -p 9000:9000 $IMAGE_NAME:$VERSION_TAG
-          "
-        env:
-          HOST: ${{ secrets.HOST }}
+    - name: Create new version tag
+      run: |
+        git tag $NEW_VERSION
+        git push origin $NEW_VERSION
