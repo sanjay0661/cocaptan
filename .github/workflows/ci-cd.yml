@@ -6,7 +6,7 @@ on:
       - master
 
 env:
-  IMAGE_NAME: sanjayraj/cocaptan  # Replace with your Docker Hub repository 
+  IMAGE_NAME: sanjayraj/cocaptan  # Replace with your Docker Hub repository
 
 jobs:
   build-and-deploy:
@@ -24,16 +24,23 @@ jobs:
       - name: Get the latest Git tag and increment it
         id: set_version_tag
         run: |
-          # Get the last tag (assumes it's in the format v1, v2, v3, etc.)
-          LAST_TAG=$(git describe --tags --abbrev=0 || echo "v0")  # Default to "v0" if no tag exists
-          echo "The latest Git tag is: $LAST_TAG"
+          # Get the list of all tags and pick the highest version
+          TAGS=$(git tag -l "v*")
+          echo "Fetched tags: $TAGS"
 
-          # Extract the version number, increment it
-          if [[ $LAST_TAG =~ ^v([0-9]+)$ ]]; then
-            TAG_NUMBER=$(echo $LAST_TAG | sed 's/v//')
-            VERSION_TAG="v$((TAG_NUMBER + 1))"
+          # If there are no tags, start with v1
+          if [ -z "$TAGS" ]; then
+            VERSION_TAG="v1"
           else
-            VERSION_TAG="v1"  # Start with v1 if format doesn't match
+            # Get the last tag number from the list of tags
+            LAST_TAG=$(echo "$TAGS" | sort -V | tail -n 1)
+            echo "The latest Git tag is: $LAST_TAG"
+
+            # Extract version number from tag (remove leading "v")
+            TAG_NUMBER=$(echo $LAST_TAG | sed 's/v//')
+
+            # Increment version
+            VERSION_TAG="v$((TAG_NUMBER + 1))"
           fi
 
           echo "The tag being used is: $VERSION_TAG"
@@ -50,7 +57,7 @@ jobs:
       - name: Build Docker Image
         run: |
           docker build -t $IMAGE_NAME:$TAG .
-        
+
       # Step 6: Push Docker Image to Docker Hub
       - name: Push Docker Image to Docker Hub
         run: docker push $IMAGE_NAME:$TAG
