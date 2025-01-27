@@ -13,18 +13,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Node.js (optional, if you need node/npm)
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '14'
+          node-version: '16'  # Change this to the required version of Node.js
 
-      - name: Install dependencies and build React app
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps  # Install dependencies for Angular project
+
+      - name: Install Angular CLI
+        run: npm install -g @angular/cli  # Ensure Angular CLI is installed globally
+
+      - name: Build the Angular app
         run: |
-          echo "Installing dependencies..."
-          npm install --legacy-peer-deps
-
-          echo "Building the React app..."
-          CI=false npm run build  # Build the React app
+          echo "Building the Angular application..."
+          CI=false ng build --verbose  # Build Angular app in production mode with verbose logging
 
       - name: Tagging setup
         run: |
