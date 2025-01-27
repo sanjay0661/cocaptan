@@ -36,21 +36,13 @@ jobs:
 
     - name: Check if tag exists and create new tag
       run: |
-        # Check if the new tag already exists on the remote
-        TAG_EXISTS=$(git ls-remote --tags origin $NEW_TAG)
+        # Ensure the new tag is a valid format and check if it exists on remote
+        TAG_EXISTS=$(git ls-remote --tags origin | grep "refs/tags/$NEW_TAG")
+        
         if [ -z "$TAG_EXISTS" ]; then
+          echo "Tag $NEW_TAG does not exist, creating it."
           git tag $NEW_TAG
           git push origin $NEW_TAG
-          echo "Tag $NEW_TAG pushed."
         else
-          # If the tag already exists, increment the version
-          TAGS=$(git tag -l)
-          LATEST_TAG=$(echo "$TAGS" | sort -V | tail -n 1)
-          VERSION_ARRAY=(${LATEST_TAG//./ })
-          PATCH=${VERSION_ARRAY[2]}
-          NEW_PATCH=$((PATCH + 1))
-          NEW_TAG="${VERSION_ARRAY[0]}.${VERSION_ARRAY[1]}.$NEW_PATCH"
-          git tag $NEW_TAG
-          git push origin $NEW_TAG
-          echo "Tag $NEW_TAG pushed after incrementing."
+          echo "Tag $NEW_TAG already exists, skipping tag creation."
         fi
