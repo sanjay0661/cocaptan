@@ -17,16 +17,20 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Step 2: Retrieve the Current Version
-      - name: Get Current Version
+      # Step 2: Retrieve the Current Version and Generate Tag
+      - name: Get Current Version and Generate Tag
         id: version
         run: |
+          # Check if there are any tags
           if git describe --tags --abbrev=0 2>/dev/null; then
+            # If tags exist, increment the last tag number
             CURRENT_TAG=$(git describe --tags --abbrev=0)
             NEW_VERSION=$(( ${CURRENT_TAG#v} + 1 ))
             echo "TAG=v$NEW_VERSION" >> $GITHUB_ENV
           else
-            echo "TAG=v1" >> $GITHUB_ENV
+            # If no tags exist, use commit number or sha
+            COMMIT_SHA=$(git rev-parse --short HEAD)
+            echo "TAG=v$COMMIT_SHA" >> $GITHUB_ENV
           fi
         shell: bash
 
