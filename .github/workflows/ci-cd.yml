@@ -21,41 +21,43 @@ jobs:
       - name: Get Current Version and Generate Tag
         id: version
         run: |
-          # Check if there are any tags
-          if git describe --tags --abbrev=0 2>/dev/null; then
-            # If tags exist, increment the last tag number
-            CURRENT_TAG=$(git describe --tags --abbrev=0)
-            NEW_VERSION=$(( ${CURRENT_TAG#v} + 1 ))
-            echo "TAG=v$NEW_VERSION" >> $GITHUB_ENV
+          # Get the most recent tag (e.g., v1, v2, v3, ...)
+          CURRENT_TAG=$(git tag -l "v*" | sort -V | tail -n 1)
+          
+          # Increment the last tag number if it exists
+          if [ -z "$CURRENT_TAG" ]; then
+            NEW_TAG="v1"  # Start with v1 if no tags are present
           else
-            # If no tags exist, use commit number or sha
-            COMMIT_SHA=$(git rev-parse --short HEAD)
-            echo "TAG=v$COMMIT_SHA" >> $GITHUB_ENV
+            LAST_VERSION=$(echo "$CURRENT_TAG" | sed 's/v//')
+            NEW_VERSION=$(( LAST_VERSION + 1 ))
+            NEW_TAG="v$NEW_VERSION"
           fi
+
+          echo "TAG=$NEW_TAG" >> $GITHUB_ENV
         shell: bash
 
-      # Step 3: Log in to Docker Hub
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      # Step 4: Build Docker Image
-      - name: Build Docker Image
-        run: docker build -t $IMAGE_NAME:${{ env.TAG }} .
-
-      # Step 5: Push Docker Image to Docker Hub
-      - name: Push Docker Image to Docker Hub
-        run: docker push $IMAGE_NAME:${{ env.TAG }}
-
-      # Step 6: Tag and Push Git Version
+      # Step 3: Create and Push Git Tag
       - name: Create and Push Git Tag
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git tag ${{ env.TAG }}
           git push origin ${{ env.TAG }}
+
+      # Step 4: Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # Step 5: Build Docker Image
+      - name: Build Docker Image
+        run: docker build -t $IMAGE_NAME:${{ env.TAG }} .
+
+      # Step 6: Push Docker Image to Docker Hub
+      - name: Push Docker Image to Docker Hub
+        run: docker push $IMAGE_NAME:${{ env.TAG }}
 
       # Step 7: Set up SSH to Deploy to Remote Server
       - name: Set up SSH
