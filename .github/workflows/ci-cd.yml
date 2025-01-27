@@ -1,61 +1,110 @@
-name: Automatic Version Tagging 
+name: CI/CD Pipeline with Automatic Version Tagging for Docker Deployment
 
 on:
   push:
     branches:
-      - master  # Run the workflow when there is a push on the main branch
+      - master
+
+env:
+  IMAGE_NAME: sanjayraj/cocaptan  # Replace with your Docker Hub repository
 
 jobs:
-  version_tagging:
+  version_tagging_and_deploy:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      # Step 1: Check out the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-    - name: Set up Git user
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
+      # Step 2: Set up Git user
+      - name: Set up Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-    - name: Fetch all tags
-      run: git fetch --tags
+      # Step 3: Fetch all tags
+      - name: Fetch all tags
+        run: git fetch --tags
 
-    - name: Get the latest tag
-      id: get_tag
-      run: |
-        latest_tag=$(git tag | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
-        echo "Latest tag: $latest_tag"
-        echo "::set-output name=tag::$latest_tag"
+      # Step 4: Get the latest tag
+      - name: Get the latest tag
+        id: get_tag
+        run: |
+          latest_tag=$(git tag | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          echo "Latest tag: $latest_tag"
+          echo "::set-output name=tag::$latest_tag"
 
-    - name: Increment version
-      id: increment_tag
-      run: |
-        tag=$(echo "${{ steps.get_tag.outputs.tag }}" | sed 's/^v//')
-        IFS='.' read -ra PARTS <<< "$tag"
-        major=${PARTS[0]:-0}
-        minor=${PARTS[1]:-0}
-        patch=${PARTS[2]:-0}
+      # Step 5: Increment the version tag
+      - name: Increment version
+        id: increment_tag
+        run: |
+          tag=$(echo "${{ steps.get_tag.outputs.tag }}" | sed 's/^v//')
+          IFS='.' read -ra PARTS <<< "$tag"
+          major=${PARTS[0]:-0}
+          minor=${PARTS[1]:-0}
+          patch=${PARTS[2]:-0}
+          new_version="v$major.$((minor+1)).0"
+          echo "New version: $new_version"
+          echo "::set-output name=new_tag::$new_version"
 
-        # Increment minor version (customize logic here for patch/major increments)
-        new_version="v$major.$((minor+1)).0"
-        echo "New version: $new_version"
-        echo "::set-output name=new_tag::$new_version"
+      # Step 6: Check if the tag exists
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          git fetch --tags
+          if git rev-parse "${{ steps.increment_tag.outputs.new_tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_ENV
+          else
+            echo "exists=false" >> $GITHUB_ENV
+          fi
 
-    - name: Check if tag exists
-      id: check_tag
-      run: |
-        git fetch --tags
-        if git rev-parse "${{ steps.increment_tag.outputs.new_tag }}" >/dev/null 2>&1; then
-          echo "exists=true" >> $GITHUB_ENV
-        else
-          echo "exists=false" >> $GITHUB_ENV
-        fi
+      # Step 7: Push new tag (if not exists)
+      - name: Push new tag
+        if: env.exists == 'false'
+        run: |
+          git tag "${{ steps.increment_tag.outputs.new_tag }}"
+          git push origin "${{ steps.increment_tag.outputs.new_tag }}"
+        env:
+          TOKEN: ${{ secrets.GH_TOKEN }}
 
-    - name: Push new tag
-      if: env.exists == 'false'
-      run: |
-        git tag "${{ steps.increment_tag.outputs.new_tag }}"
-        git push origin "${{ steps.increment_tag.outputs.new_tag }}"
-      env:
-        TOKEN: ${{ secrets.GH_TOKEN }}  # Use your personal access token or secret here
+      # Step 8: Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # Step 9: Build Docker Image
+      - name: Build Docker Image
+        run: |
+          docker build -t $IMAGE_NAME:${{ steps.increment_tag.outputs.new_tag }} .
+          docker tag $IMAGE_NAME:${{ steps.increment_tag.outputs.new_tag }} $IMAGE_NAME:latest
+
+      # Step 10: Push Docker Image to Docker Hub
+      - name: Push Docker Image to Docker Hub
+        run: |
+          docker push $IMAGE_NAME:${{ steps.increment_tag.outputs.new_tag }}
+          docker push $IMAGE_NAME:latest
+
+      # Step 11: Set up SSH for deployment
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          HOST: ${{ secrets.HOST }}
+
+      # Step 12: Deploy to Remote Server
+      - name: Deploy Application to Droplet
+        run: |
+          ssh root@$HOST "
+            docker pull $IMAGE_NAME:latest &&
+            docker stop cocaptan || true &&
+            docker rm cocaptan || true &&
+            docker run -d --name cocaptan -p 9000:9000 $IMAGE_NAME:latest
+          "
+        env:
+          HOST: ${{ secrets.HOST }}
