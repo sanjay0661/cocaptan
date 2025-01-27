@@ -28,26 +28,30 @@ jobs:
           if [ -z "$CURRENT_TAG" ]; then
             NEW_TAG="v1"  # Start with v1 if no tags are present
           else
+            # Extract the version number, increment it, and generate the new tag.
             LAST_VERSION=$(echo "$CURRENT_TAG" | sed 's/v//')
             NEW_VERSION=$(( LAST_VERSION + 1 ))
             NEW_TAG="v$NEW_VERSION"
           fi
 
+          # Ensure the tag does not already exist by checking and incrementing.
+          TAG_EXISTS=$(git tag -l "v$NEW_VERSION")
+          while [ ! -z "$TAG_EXISTS" ]; do
+            NEW_VERSION=$(( NEW_VERSION + 1 ))
+            NEW_TAG="v$NEW_VERSION"
+            TAG_EXISTS=$(git tag -l "v$NEW_VERSION")
+          done
+
           echo "TAG=$NEW_TAG" >> $GITHUB_ENV
         shell: bash
 
       # Step 3: Check if the Git tag already exists, skip if it does
-      - name: Skip Create and Push Git Tag if Exists
+      - name: Create and Push Git Tag
         run: |
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag ${{ env.TAG }} already exists. Skipping tag creation."
-          else
-            echo "Creating new tag: ${{ env.TAG }}"
-            git config user.name "GitHub Actions"
-            git config user.email "actions@github.com"
-            git tag ${{ env.TAG }}
-            git push origin ${{ env.TAG }}
-          fi
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag ${{ env.TAG }}
+          git push origin ${{ env.TAG }}
 
       # Step 4: Log in to Docker Hub
       - name: Log in to Docker Hub
