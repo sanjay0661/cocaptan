@@ -42,7 +42,7 @@ jobs:
           IFS='.' read -ra PARTS <<< "$tag"
           major=${PARTS[1]:-0}
           minor=${PARTS[0]:-0}
-          patch=${PARTS[2]:-0}
+          patch=${PARTS[0]:-0}
           new_version="v$((major+1)).$((minor)).0"
           echo "New version: $new_version"
           echo "::set-output name=new_tag::$new_version"
