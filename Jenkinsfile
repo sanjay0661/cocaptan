@@ -1,77 +1,46 @@
-pipeline { 
-    agent {
-        docker {
-            image 'docker:stable'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
-        }
-    }
+pipeline {
+    agent any
     environment {
-        IMAGE_NAME = 'sanjayraj/appv1'  
-        DOCKER_CONFIG = '/tmp/.docker'
-        KUBECONFIG = '/var/lib/jenkins/.kube/config'  // Add Kube config path for Jenkins
+        DEV_SERVER = "ubuntu@dev-server-ip"
+        PROD_SERVER = "ubuntu@prod-server-ip"
+        RELEASE_SERVER = "ubuntu@release-server-ip"
+        SSH_KEY = credentials('ssh-key-id')  // Store SSH key in Jenkins credentials
     }
     stages {
-        stage('Checkout Code') {
-            steps {
-                checkout scm
-            }
-        }
-        stage('Build Docker Image') {
+        stage('Check Branch') {
             steps {
                 script {
-                    echo 'Building Docker image...'
-                    sh 'docker build -t $IMAGE_NAME .'
-                }
-            }
-        }
-        stage('Login to Docker Hub') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'docker_hub_creds', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                    script {
-                        echo 'Logging into Docker Hub...'
-                        sh '''
-                            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-                        '''
+                    if (env.BRANCH_NAME == 'development') {
+                        deployToServer(DEV_SERVER)
+                    } else if (env.BRANCH_NAME == 'release') {
+                        deployToServer(RELEASE_SERVER)
+                    } else if (env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master') {
+                        deployToServer(PROD_SERVER)
+                    } else {
+                        echo "No deployment needed for branch: ${env.BRANCH_NAME}"
+                        currentBuild.result = 'ABORTED'
+                        return
                     }
                 }
             }
         }
-        stage('Push Docker Image') {
-            steps {
-                script {
-                    echo 'Pushing Docker image to Docker Hub...'
-                    sh 'docker push $IMAGE_NAME'
-                }
-            }
-        }
-        stage('Deploy to Minikube') {
-            steps {
-                script {
-                    echo 'Setting up kubectl and deploying to Minikube...'
-                    // Install sudo in the docker agent
-                    sh '''
-                        apk add --no-cache sudo  # Install sudo (for Alpine-based Docker image)
-                        sudo minikube update-context
-                        sudo minikube start
-                        sudo kubectl config use-context minikube
-                        sudo kubectl apply -f deployment.yaml
-                    '''
-                }
-            }
-        }
     }
-    post {
-        always {
-            script {
-                echo 'Logging out from Docker Hub...'
-                sh 'docker logout'
+}
+
+def deployToServer(targetServer) {
+    stage("Deploy to ${targetServer}") {
+        steps {
+            echo "Deploying to ${targetServer}..."
+            sshagent(['ssh-key-id']) {
+                sh """
+                ssh -o StrictHostKeyChecking=no ${targetServer} '
+                cd /path/to/app &&
+                git pull origin ${env.BRANCH_NAME} &&
+                docker build -t my-app:${env.BRANCH_NAME} . &&
+                docker run -d --name my-app-${env.BRANCH_NAME} -p 80:80 my-app:${env.BRANCH_NAME}
+                '
+                """
             }
-        }
-        success {
-            echo 'Pipeline executed successfully! Image pushed to Docker Hub and deployed to Minikube.'
-        }
-        failure {
-            echo 'Pipeline failed!'
         }
     }
 }
